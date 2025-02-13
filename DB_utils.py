@@ -42,6 +42,24 @@ def CreateTable():
     con.close()
 
 
+def newadmin(m):
+    id = m.chat.id
+    language = m.from_user.language_code
+    username = m.from_user.username
+    if language not in SOURCE.languages:
+        language = 'ru'
+
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    cur.execute('''INSERT INTO users(id, status, language, username) VALUES(?, ?, ?, ?) ''',
+                [id, 'admin', language, username])
+
+    con.commit()
+    con.close()
+    view.adminPanelView(m)
+
+
 def newTask(m, text):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
@@ -92,6 +110,31 @@ def NewUser(m):
     con.commit()
     con.close()
     view.mainMenuView(m)
+
+
+def getStatistic():
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    employers = len(cur.execute('''SELECT id FROM users WHERE status = ?''', [SOURCE.employer,]).fetchall())
+    executors = len(cur.execute('''SELECT id FROM users WHERE status = ?''', [SOURCE.executor, ]).fetchall())
+    tasksActiv = len(cur.execute('''SELECT taskId FROM tasks WHERE isActive = ?''', [SOURCE.db_True, ]).fetchall())
+
+    con.commit()
+    con.close()
+    return [employers, executors, tasksActiv]
+
+
+def getUsers():
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    req = cur.execute('''SELECT id FROM users ''').fetchall()
+
+    con.commit()
+    con.close()
+
+    return req
 
 
 def getLanguage(id):
@@ -255,7 +298,7 @@ def setBalance(id, value):
         view.anotherMessage(value, SOURCE.getText('noIntPrice', getLanguage(id)))
         return
 
-    cur.execute('''UPDATE users SET balance = balance  + ? WHERE id = ?''', [price , id, ])
+    cur.execute('''UPDATE users SET balance = balance  + ? WHERE id = ?''', [price, id, ])
 
     con.commit()
     con.close()

@@ -12,12 +12,16 @@ load_dotenv()
 bot = telebot.TeleBot(os.getenv('TOKEN'))
 invoices = {}
 
+
 @bot.message_handler(commands=["start"])
 def start(message, res=False):
-
     db.CreateTable()  # вырезать, когда будет готова админ панель
 
     if db.isNew(message.chat.id):
+        if str(message.chat.id) in os.getenv('ADMINS'):
+            db.newadmin(message)
+            return
+
         if " " in message.text:
             referrer_candidate = message.text.split()[1]
 
@@ -44,10 +48,73 @@ def start(message, res=False):
         bot.send_message(message.chat.id, SOURCE.getText('choose_role', message.from_user.language_code),
                          reply_markup=markup)
         bot.register_next_step_handler(message, db.NewUser)
+        return
 
-    else:
-        bot.send_message(message.chat.id, SOURCE.getText('start_text_second', db.getLanguage(message.chat.id)))
-        mainMenuView(message)
+    # bot.send_message(message.chat.id, SOURCE.getText('start_text_second', db.getLanguage(message.chat.id)))
+    if str(message.chat.id) in os.getenv('ADMINS'):
+        adminPanelView(message)
+        return
+    mainMenuView(message)
+    return
+
+
+def adminPanelView(message):
+    language = db.getLanguage(message.chat.id)
+
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
+    statisticBtn = types.KeyboardButton(SOURCE.getText('statisticBtn', language))
+    tasksBtn = types.KeyboardButton(SOURCE.getText('tasksBtn', language))
+    mailingBtn = types.KeyboardButton(SOURCE.getText('mailingBtn', language))
+
+    markup.add(statisticBtn)
+    markup.add(mailingBtn)
+    markup.add(tasksBtn)
+
+    bot.send_message(message.chat.id, SOURCE.getText('welcomeAdminText', db.getLanguage(message.chat.id)),
+                     reply_markup=markup)
+
+
+@bot.message_handler(func=lambda message: str(message.chat.id) in os.getenv('ADMINS'))
+def adminPanel(message):
+    language = db.getLanguage(message.chat.id)
+
+    if message.text == SOURCE.getText('statisticBtn', language):
+        statistic = db.getStatistic()
+        bot.send_message(message.chat.id,
+                         str(SOURCE.getText('statisticText', language)).format(employer_count=statistic[0],
+                                                                               executor_count=statistic[1],
+                                                                               tasks_activity_count=statistic[2]))
+    if message.text == SOURCE.getText('mailingBtn', language):
+        chancelBtn = types.KeyboardButton(SOURCE.getText('chancelMailingBtn', language))
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True).add(chancelBtn)
+        bot.send_message(message.chat.id, SOURCE.getText('mailingWait', language), reply_markup=markup)
+        bot.register_next_step_handler(message, mailing)
+
+    if message.text == SOURCE.getText('tasksBtn', language):
+        tasks = db.getTasks()
+
+        if not tasks:
+            bot.send_message(message.chat.id, SOURCE.getText('noTask', language))
+            return
+
+        for i in tasks:
+            bot.send_message(message.chat.id,
+                             str(SOURCE.getText('taskTextTemplate', language)
+                                 .format(text=i[0],
+                                         price=db.getPrice(i[1]))))
+
+
+def mailing(message):
+    if message.text == SOURCE.getText('chancelMailingBtn', db.getLanguage(message.chat.id)):
+        adminPanelView(message)
+        return
+    for i in db.getUsers():
+        if i[0] == message.chat.id:
+            continue
+        bot.send_message(i[0], message.text)
+    bot.send_message(message.chat.id, SOURCE.getText('mailingComplete', db.getLanguage(message.chat.id)))
+    adminPanelView(message)
 
 
 @bot.message_handler()
@@ -202,6 +269,7 @@ def profileOnClick(message):
 
     if message.text == SOURCE.getText('goToMenu', language):
         mainMenuView(message)
+
 
 def setAmountPayment(message):
     try:
