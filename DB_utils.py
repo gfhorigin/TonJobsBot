@@ -86,7 +86,8 @@ def NewUser(m):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
 
-    cur.execute('''INSERT INTO users(id, status, language, username) VALUES(?, ?, ?, ?) ''', [id, role, language, username])
+    cur.execute('''INSERT INTO users(id, status, language, username) VALUES(?, ?, ?, ?) ''',
+                [id, role, language, username])
 
     con.commit()
     con.close()
@@ -178,6 +179,18 @@ def getCreateTasks(id):
     return req
 
 
+def getBalance(id):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    req = cur.execute('''SELECT balance  FROM users WHERE id = ?''', [id, ]).fetchone()[0]
+
+    con.commit()
+    con.close()
+
+    return req
+
+
 def getCompleteTasks(id):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
@@ -232,6 +245,22 @@ def setTaskExecutorId(taskId, id):
     con.close()
 
 
+def setBalance(id, value):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    try:
+        price = float(value.replace(',', '.'))
+    except:
+        view.anotherMessage(value, SOURCE.getText('noIntPrice', getLanguage(id)))
+        return
+
+    cur.execute('''UPDATE users SET balance = balance  + ? WHERE id = ?''', [price , id, ])
+
+    con.commit()
+    con.close()
+
+
 def setCompleteTasks(id):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
@@ -261,6 +290,7 @@ def setLanguage(id, value):
     con.commit()
     con.close()
 
+
 def setReferral(id):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
@@ -269,6 +299,7 @@ def setReferral(id):
 
     con.commit()
     con.close()
+
 
 def deleteTask(taskId):
     con = sqlite3.connect(SOURCE.data_base_name)

@@ -5,19 +5,17 @@ from dotenv import load_dotenv
 import DB_utils as db
 import SOURCE
 import random
+import TONmanager as ton
 
 load_dotenv()
 
 bot = telebot.TeleBot(os.getenv('TOKEN'))
-
+invoices = {}
 
 @bot.message_handler(commands=["start"])
 def start(message, res=False):
-    #print(message.text)
+
     db.CreateTable()  # вырезать, когда будет готова админ панель
-    #
-    # print(bot.get_chat_member(Channel_id message.chat.id))
-    # print("pod")
 
     if db.isNew(message.chat.id):
         if " " in message.text:
@@ -185,6 +183,10 @@ def profileOnClick(message):
     role = db.getRole(message.chat.id)
     language = db.getLanguage(message.chat.id)
 
+    if message.text == SOURCE.getText('topUpBalanceBtn', language) and role == SOURCE.employer:
+        bot.send_message(message.chat.id, SOURCE.getText('getAmountText', language))
+        bot.register_next_step_handler(message, setAmountPayment)
+
     if message.text == SOURCE.getText('createReferralBtn', language):
         bot.send_message(message.chat.id, SOURCE.getText('youGetReferral', language))
         bot.send_message(message.chat.id, str(SOURCE.referral_url.format(user_id=message.chat.id)))
@@ -200,6 +202,14 @@ def profileOnClick(message):
 
     if message.text == SOURCE.getText('goToMenu', language):
         mainMenuView(message)
+
+def setAmountPayment(message):
+    try:
+        price = float(message.text.replace(',', '.'))
+    except:
+        bot.send_message(message.chat.id, SOURCE.getText('noIntPrice', db.getLanguage(message.chat.id)))
+        return
+    bot.send_message(message.chat.id, ton.get_invoice(message, price))
 
 
 def getPrice(message):
