@@ -27,7 +27,8 @@ def CreateTable():
                                                     createTasks DEFAULT 0,
                                                     rating INTEGER DEFAULT 0,
                                                     balance INTEGER DEFAULT 0,
-                                                    language TEXT
+                                                    language TEXT,
+                                                    referral INTEGER DEFAULT 0
                                                     ) ''')
 
     cur.execute('''CREATE TABLE IF NOT EXISTS tasks( taskId INTEGER PRIMARY KEY,
@@ -85,7 +86,7 @@ def NewUser(m):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
 
-    cur.execute('''INSERT INTO users(id, status, language, username) VALUES(?, ?, ?) ''', [id, role, language, username])
+    cur.execute('''INSERT INTO users(id, status, language, username) VALUES(?, ?, ?, ?) ''', [id, role, language, username])
 
     con.commit()
     con.close()
@@ -260,6 +261,14 @@ def setLanguage(id, value):
     con.commit()
     con.close()
 
+def setReferral(id):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    cur.execute('''UPDATE users SET referral = referral+1 WHERE id = ?''', [id, ])
+
+    con.commit()
+    con.close()
 
 def deleteTask(taskId):
     con = sqlite3.connect(SOURCE.data_base_name)

@@ -13,12 +13,26 @@ bot = telebot.TeleBot(os.getenv('TOKEN'))
 
 @bot.message_handler(commands=["start"])
 def start(message, res=False):
+    #print(message.text)
     db.CreateTable()  # вырезать, когда будет готова админ панель
     #
     # print(bot.get_chat_member(Channel_id message.chat.id))
     # print("pod")
 
     if db.isNew(message.chat.id):
+        if " " in message.text:
+            referrer_candidate = message.text.split()[1]
+
+            # Пробуем преобразовать строку в число
+            try:
+                referrer_candidate = int(referrer_candidate)
+
+                # Проверяем на несоответствие TG ID пользователя TG ID реферера
+                if message.chat.id != referrer_candidate:
+                    db.setReferral(referrer_candidate)
+
+            except ValueError:
+                pass
 
         telebot.types.ReplyKeyboardRemove()
         bot.send_message(message.chat.id, SOURCE.getText('start_text', message.from_user.language_code))
@@ -92,9 +106,11 @@ def mainMenuOnCLick(message):
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             changeLanguageBtn = types.KeyboardButton(SOURCE.getText('changeLanguageBtn', language))
             topUpBalanceBtn = types.KeyboardButton(SOURCE.getText('topUpBalanceBtn', language))
+            createReferralBtn = types.KeyboardButton(SOURCE.getText('createReferralBtn', language))
             goToMenu = types.KeyboardButton(SOURCE.getText('goToMenu', language))
             markup.add(topUpBalanceBtn)
             markup.add(changeLanguageBtn)
+            markup.add(createReferralBtn)
             markup.add(goToMenu)
 
             bot.send_message(message.chat.id,
@@ -130,13 +146,14 @@ def mainMenuOnCLick(message):
 
     if role == SOURCE.executor:
         if message.text == SOURCE.getText("profileBtn", language):
-
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             changeLanguageBtn = types.KeyboardButton(SOURCE.getText('changeLanguageBtn', language))
-            withdrawBalanceBtn= types.KeyboardButton(SOURCE.getText('withdrawBalanceBtn', language))
+            withdrawBalanceBtn = types.KeyboardButton(SOURCE.getText('withdrawBalanceBtn', language))
+            createReferralBtn = types.KeyboardButton(SOURCE.getText('createReferralBtn', language))
             goToMenu = types.KeyboardButton(SOURCE.getText('goToMenu', language))
             markup.add(withdrawBalanceBtn)
             markup.add(changeLanguageBtn)
+            markup.add(createReferralBtn)
             markup.add(goToMenu)
 
             bot.send_message(message.chat.id,
@@ -163,9 +180,14 @@ def mainMenuOnCLick(message):
                                                           price=db.getPrice(tasks[tasksNum][1]))),
                              reply_markup=markup)
 
+
 def profileOnClick(message):
     role = db.getRole(message.chat.id)
     language = db.getLanguage(message.chat.id)
+
+    if message.text == SOURCE.getText('createReferralBtn', language):
+        bot.send_message(message.chat.id, SOURCE.getText('youGetReferral', language))
+        bot.send_message(message.chat.id, str(SOURCE.referral_url.format(user_id=message.chat.id)))
 
     if message.text == SOURCE.getText('changeLanguageBtn', language):
         markup = types.InlineKeyboardMarkup()
@@ -192,7 +214,7 @@ def callback_message(callback):
 
     if SOURCE.ruChange in callback.data:
         db.setLanguage(callback.message.chat.id, SOURCE.ruChange)
-        bot.send_message(callback.message.chat.id,SOURCE.getText('changeLanguageComplete', language))
+        bot.send_message(callback.message.chat.id, SOURCE.getText('changeLanguageComplete', language))
         bot.delete_message(callback.message.chat.id, callback.message.message_id)
 
     if SOURCE.enChange in callback.data:
