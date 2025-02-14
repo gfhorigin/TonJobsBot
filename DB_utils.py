@@ -130,12 +130,12 @@ def newTask(m, text):
         price = float(m.text.replace(',', '.'))
 
     except:
-        view.anotherMessage(m.chat.id, SOURCE.getText('noIntPrice', getLanguage(m.chat.id)))
+        view.anotherMessage(m.chat.id, SOURCE.getText('noIntPrice', SOURCE.default_language))
         con.commit()
         con.close()
         return
     if getBalance(m.chat.id) < getAllTasksPrice(m.chat.id) + price:
-        view.anotherMessage(m.chat.id, SOURCE.getText('notEnoughMoney', getLanguage(m.chat.id)))
+        view.anotherMessage(m.chat.id, SOURCE.getText('notEnoughMoney', SOURCE.default_language))
         con.commit()
         con.close()
         return
@@ -160,14 +160,14 @@ def NewUser(m):
     id = m.chat.id
     language = m.from_user.language_code
     username = m.from_user.username
-    if language not in SOURCE.languages:
-        language = 'ru'
-    if m.text == SOURCE.getText('employer', language):
+    if language not in SOURCE.languages or language is None:
+        language = SOURCE.default_language
+    if m.text == SOURCE.getText('employer',  SOURCE.default_language):
         role = SOURCE.employer
-    elif m.text == SOURCE.getText('executor', language):
+    elif m.text == SOURCE.getText('executor',  SOURCE.default_language):
         role = SOURCE.executor
     else:
-        view.anotherMessage(m.chat.id, SOURCE.getText('uncorrectedRole', getLanguage(m.chat.id)))
+        view.anotherMessage(m.chat.id, SOURCE.getText('uncorrectedRole', SOURCE.default_language))
 
         return
 

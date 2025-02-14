@@ -7,7 +7,8 @@ def getText(value: str, lg: str):
     return config[lg][value]  # читаем конфиг
 
 
-channels = ['@coinferrari','@bid_coinn']
+channels = ['@coinferrari', '@bid_coinn']
+channels_url = ['https://t.me/coinferrari', 'https://t.me/bid_coinn']
 executor = "executor"
 employer = "employer"
 languages = ['ru', 'en']
@@ -26,3 +27,5 @@ chancel_withdraw_balance = "chancelWithdraw"
 correct_wallet_link = 'https://t.me/CryptoBot'
 withdraw_complete = 'withdrawComplete'
 min_money = 0.1
+channel_check = 'channelCheck'
+default_language = 'ru'

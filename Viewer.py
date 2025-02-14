@@ -15,13 +15,26 @@ invoices = {}
 
 @bot.message_handler(commands=["start"])
 def start(message, res=False):
-    #db.CreateTable()  # TODO: вырезать после завершения тестов
-    for i in SOURCE.channels:
-        result = bot.get_chat_member(i, message.chat.id)
+    # db.CreateTable()  # TODO: вырезать после завершения тестов
+    btns = []
+    for i in SOURCE.channels_url:
+        result = bot.get_chat_member(str('@'+i[i.rfind('/')+1:]), message.chat.id)
+        # print(result, message.chat.id)
+        if result.status != 'member' and result.status != 'creator':
+            markup = types.InlineKeyboardMarkup()
+            for j in SOURCE.channels_url:
+                channelBtn = types.InlineKeyboardButton(
+                    str(SOURCE.getText('channelNum', SOURCE.default_language).format(
+                        num=SOURCE.channels_url.index(j) + 1)),
+                    url=j)
+                btns.append(channelBtn)
 
-        if result.status != 'member':
-            bot.send_message(message.chat.id, SOURCE.getText('noMember', message.from_user.language_code))
-            bot.send_message(message.chat.id, ', '.join(SOURCE.channels))
+            for btn in btns:
+                markup.add(btn)
+            checkBtn = types.InlineKeyboardButton(SOURCE.getText('checkBtn', SOURCE.default_language),callback_data=SOURCE.channel_check)
+
+            markup.add(checkBtn)
+            bot.send_message(message.chat.id, SOURCE.getText('noMember', SOURCE.default_language), reply_markup=markup)
             return
 
     if db.isNew(message.chat.id):
@@ -44,15 +57,15 @@ def start(message, res=False):
                 pass
 
         telebot.types.ReplyKeyboardRemove()
-        bot.send_message(message.chat.id, SOURCE.getText('start_text', message.from_user.language_code))
+        bot.send_message(message.chat.id, SOURCE.getText('start_text', SOURCE.default_language))
 
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
-        executorBtn = types.KeyboardButton(SOURCE.getText('employer', message.from_user.language_code))
-        employerBtn = types.KeyboardButton(SOURCE.getText('executor', message.from_user.language_code))
+        executorBtn = types.KeyboardButton(SOURCE.getText('employer', SOURCE.default_language))
+        employerBtn = types.KeyboardButton(SOURCE.getText('executor', SOURCE.default_language))
         markup.add(employerBtn, executorBtn)
 
-        bot.send_message(message.chat.id, SOURCE.getText('choose_role', message.from_user.language_code),
+        bot.send_message(message.chat.id, SOURCE.getText('choose_role', SOURCE.default_language),
                          reply_markup=markup)
         bot.register_next_step_handler(message, db.NewUser)
         return
@@ -116,9 +129,9 @@ def adminPanel(message):
     if message.text == SOURCE.getText('withdrawRequests', language):
         req = db.getMoneyRequests()
         for i in req:
-
             payBtn = types.InlineKeyboardButton(SOURCE.getText('payBtn', language), url=str(i[3]))
-            completeBtn =  types.InlineKeyboardButton(SOURCE.getText('completeWithdrawBtn', language), callback_data=SOURCE.withdraw_complete+'|'+str(i[0]))
+            completeBtn = types.InlineKeyboardButton(SOURCE.getText('completeWithdrawBtn', language),
+                                                     callback_data=SOURCE.withdraw_complete + '|' + str(i[0]))
             markup = types.InlineKeyboardMarkup().add(payBtn, completeBtn)
             bot.send_message(message.chat.id,
                              str(SOURCE.getText('moneyRequestTemplate', language).format(username=i[1], money=i[2])),
@@ -139,8 +152,32 @@ def mailing(message):
 
 @bot.message_handler()
 def TextHandler(message):
+    btns = []
+    for i in SOURCE.channels_url:
+
+        result = bot.get_chat_member(str('@' + i[i.rfind('/') + 1:]), message.chat.id)
+        # print(result, message.chat.id)
+        if result.status != 'member' and result.status != 'creator':
+            markup = types.InlineKeyboardMarkup()
+            for j in SOURCE.channels_url:
+                channelBtn = types.InlineKeyboardButton(
+                    str(SOURCE.getText('channelNum', SOURCE.default_language).format(
+                        num=SOURCE.channels_url.index(j) + 1)),
+                    url=j)
+                btns.append(channelBtn)
+
+            for btn in btns:
+                markup.add(btn)
+            checkBtn = types.InlineKeyboardButton(SOURCE.getText('checkBtn', SOURCE.default_language),
+                                                  callback_data=SOURCE.channel_check)
+
+            markup.add(checkBtn)
+            bot.send_message(message.chat.id, SOURCE.getText('noMember', SOURCE.default_language),
+                             reply_markup=markup)
+            return
+
     if db.isNew(message.chat.id):
-        bot.send_message(message.chat.id, SOURCE.getText('notRegistered', message.from_user.language_code))
+        bot.send_message(message.chat.id, SOURCE.getText('notRegistered', SOURCE.default_language))
         return
     mainMenuOnCLick(message)
     profileOnClick(message)
@@ -203,8 +240,8 @@ def mainMenuOnCLick(message):
             bot.send_message(message.chat.id,
                              str(SOURCE.getText('profileEmployerText', language)
                                  .format(balance=db.getBalance(message.chat.id),
-                                         createTask=db.getCreateTasks(message.chat.id),
-                                         code=' 3')),
+                                         createTask=db.getCreateTasks(message.chat.id)
+                                         )),
                              reply_markup=markup)
 
         if message.text == SOURCE.getText("viewTasksBtn", language):
@@ -248,8 +285,7 @@ def mainMenuOnCLick(message):
             bot.send_message(message.chat.id,
                              str(SOURCE.getText('profileExecutorText', language)
                                  .format(balance=db.getBalance(message.chat.id),
-                                         completeTask=db.getCompleteTasks(message.chat.id),
-                                         code=' 3')),
+                                         completeTask=db.getCompleteTasks(message.chat.id))),
                              reply_markup=markup)
 
         if message.text == SOURCE.getText("viewTasksBtn", language):
@@ -350,13 +386,42 @@ def getPrice(message):
 
 @bot.callback_query_handler(func=lambda callback: True)
 def callback_message(callback):
+    if SOURCE.channel_check in callback.data:
+        btns = []
+        for i in SOURCE.channels_url:
+
+            result = bot.get_chat_member(str('@' + i[i.rfind('/') + 1:]), callback.message.chat.id)
+            # print(result, message.chat.id)
+            if result.status != 'member' and result.status != 'creator':
+                markup = types.InlineKeyboardMarkup()
+                for j in SOURCE.channels_url:
+
+                    channelBtn = types.InlineKeyboardButton(
+                        str(SOURCE.getText('channelNum', SOURCE.default_language).format(
+                            num=SOURCE.channels_url.index(j) + 1)),
+                        url=j)
+                    btns.append(channelBtn)
+
+                for btn in btns:
+                    markup.add(btn)
+                checkBtn = types.InlineKeyboardButton(SOURCE.getText('checkBtn', SOURCE.default_language),
+                                                      callback_data=SOURCE.channel_check)
+
+                markup.add(checkBtn)
+                bot.send_message(callback.message.chat.id, SOURCE.getText('noMember', SOURCE.default_language),
+                                 reply_markup=markup)
+                return
+        bot.send_message(callback.message.chat.id, SOURCE.getText('youSubChannel', SOURCE.default_language))
+        if db.isNew(callback.message.chat.id):
+            bot.send_message(callback.message.chat.id, SOURCE.getText('youCanContinueRegister', SOURCE.default_language))
+        return
+
     language = db.getLanguage(callback.message.chat.id)
 
     if SOURCE.withdraw_complete in callback.data:
-
         userId = callback.data[callback.data.find('|') + 1:]
         bot.delete_message(callback.message.chat.id, callback.message.message_id)
-        db.setBalance(userId, str(-1*db.getMoneyFromRequest(userId)))
+        db.setBalance(userId, str(-1 * db.getMoneyFromRequest(userId)))
         db.deleteMoneyRequest(userId)
         bot.send_message(userId, SOURCE.getText('moneyWithdrawComplete', db.getLanguage(userId)))
         bot.send_message(callback.message.chat.id, SOURCE.getText('moneyWithdrawCompleteAdminText', language))
