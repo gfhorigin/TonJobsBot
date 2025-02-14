@@ -109,7 +109,7 @@ def adminPanel(message):
     if message.text == SOURCE.getText('withdrawRequests', language):
         req = db.getMoneyRequests()
         for i in req:
-      
+
             payBtn = types.InlineKeyboardButton(SOURCE.getText('payBtn', language), url=str(i[3]))
             completeBtn =  types.InlineKeyboardButton(SOURCE.getText('completeWithdrawBtn', language), callback_data=SOURCE.withdraw_complete+'|'+str(i[0]))
             markup = types.InlineKeyboardMarkup().add(payBtn, completeBtn)
