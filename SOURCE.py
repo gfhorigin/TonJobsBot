@@ -21,6 +21,7 @@ ruChange = "ru"
 enChange = "en"
 db_True = "TRUE"
 db_False = "FALSE"
+admin = 'admin'
 referral_url = "https://t.me/Ton_jobs_bot?start={user_id}"
 chancel_mailing = "chancelMailing"
 chancel_withdraw_balance = "chancelWithdraw"

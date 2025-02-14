@@ -115,7 +115,7 @@ def newAdmin(m):
     cur = con.cursor()
 
     cur.execute('''INSERT INTO users(id, status, language, username) VALUES(?, ?, ?, ?) ''',
-                [id, 'admin', language, username])
+                [id, SOURCE.admin, language, username])
 
     con.commit()
     con.close()
@@ -234,11 +234,14 @@ def getLanguage(id):
     return req
 
 
-def getTasks(id=None):
+def getTasks(id=None, role=None):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
-    if id is None:
-        req = cur.execute('''SELECT taskText, taskId FROM tasks WHERE isActive = ?''', [SOURCE.db_True, ]).fetchall()
+    if role == SOURCE.executor:
+        req = cur.execute('''SELECT taskText, taskId FROM tasks WHERE isActive = ? AND employerId != ?''', [SOURCE.db_True, id]).fetchall()
+    elif role == SOURCE.admin:
+        req = cur.execute('''SELECT taskText, taskId FROM tasks WHERE isActive = ? ''',
+                          [SOURCE.db_True]).fetchall()
     else:
         req = cur.execute('''SELECT taskText, taskId FROM tasks WHERE employerId = ?''', [id, ]).fetchall()
     con.commit()

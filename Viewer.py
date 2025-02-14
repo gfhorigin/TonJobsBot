@@ -76,11 +76,11 @@ def start(message, res=False):
         return
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
-    executorBtn = types.KeyboardButton(SOURCE.getText('employer', SOURCE.default_language))
-    employerBtn = types.KeyboardButton(SOURCE.getText('executor', SOURCE.default_language))
+    executorBtn = types.KeyboardButton(SOURCE.getText('employer',  db.getLanguage(message.chat.id)))
+    employerBtn = types.KeyboardButton(SOURCE.getText('executor',  db.getLanguage(message.chat.id)))
     markup.add(employerBtn, executorBtn)
 
-    bot.send_message(message.chat.id, SOURCE.getText('changeRole', db.getLanguage(message.chat.id)),reply_markup=markup)
+    bot.send_message(message.chat.id, SOURCE.getText('changeRole', db.getLanguage(message.chat.id)), reply_markup=markup)
     bot.register_next_step_handler(message, db.setRole)
 
     return
@@ -122,7 +122,7 @@ def adminPanel(message):
         bot.register_next_step_handler(message, mailing)
 
     if message.text == SOURCE.getText('tasksBtn', language):
-        tasks = db.getTasks()
+        tasks = db.getTasks(message.chat.id, db.getRole(message.chat.id))
 
         if not tasks:
             bot.send_message(message.chat.id, SOURCE.getText('noTask', language))
@@ -255,7 +255,7 @@ def mainMenuOnCLick(message):
         if message.text == SOURCE.getText('howCreateTaskBtn', language):
             bot.send_message(message.chat.id,SOURCE.getText('howCreateTaskText', language))
         if message.text == SOURCE.getText("viewTasksBtn", language):
-            tasks = db.getTasks(message.chat.id)
+            tasks = db.getTasks(message.chat.id, db.getRole(message.chat.id))
 
             if not tasks:
                 bot.send_message(message.chat.id, SOURCE.getText('noTask', language))
@@ -299,7 +299,7 @@ def mainMenuOnCLick(message):
                              reply_markup=markup)
 
         if message.text == SOURCE.getText("viewTasksBtn", language):
-            tasks = db.getTasks()
+            tasks = db.getTasks(role=db.getRole(message.chat.id))
 
             if not tasks:
                 bot.send_message(message.chat.id, SOURCE.getText('notTaskToday', language))
