@@ -21,3 +21,7 @@ db_True = "TRUE"
 db_False = "FALSE"
 referral_url = "https://t.me/steal_wilberies_bot?start={user_id}"
 chancel_mailing = "chancelMailing"
+chancel_withdraw_balance = "chancelWithdraw"
+correct_wallet_link = 'https://t.me/CryptoBot'
+withdraw_complete = 'withdrawComplete'
+min_money = 0.1

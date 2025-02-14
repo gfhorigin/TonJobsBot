@@ -15,11 +15,11 @@ invoices = {}
 
 @bot.message_handler(commands=["start"])
 def start(message, res=False):
-    db.CreateTable()  # вырезать, когда будет готова админ панель
+    db.CreateTable()  # TODO: вырезать после завершения тестов
 
     if db.isNew(message.chat.id):
         if str(message.chat.id) in os.getenv('ADMINS'):
-            db.newadmin(message)
+            db.newAdmin(message)
             return
 
         if " " in message.text:
@@ -66,10 +66,12 @@ def adminPanelView(message):
     statisticBtn = types.KeyboardButton(SOURCE.getText('statisticBtn', language))
     tasksBtn = types.KeyboardButton(SOURCE.getText('tasksBtn', language))
     mailingBtn = types.KeyboardButton(SOURCE.getText('mailingBtn', language))
+    withdrawRequests = types.KeyboardButton(SOURCE.getText('withdrawRequests', language))
 
     markup.add(statisticBtn)
     markup.add(mailingBtn)
     markup.add(tasksBtn)
+    markup.add(withdrawRequests)
 
     bot.send_message(message.chat.id, SOURCE.getText('welcomeAdminText', db.getLanguage(message.chat.id)),
                      reply_markup=markup)
@@ -103,6 +105,17 @@ def adminPanel(message):
                              str(SOURCE.getText('taskTextTemplate', language)
                                  .format(text=i[0],
                                          price=db.getPrice(i[1]))))
+
+    if message.text == SOURCE.getText('withdrawRequests', language):
+        req = db.getMoneyRequests()
+        for i in req:
+      
+            payBtn = types.InlineKeyboardButton(SOURCE.getText('payBtn', language), url=str(i[3]))
+            completeBtn =  types.InlineKeyboardButton(SOURCE.getText('completeWithdrawBtn', language), callback_data=SOURCE.withdraw_complete+'|'+str(i[0]))
+            markup = types.InlineKeyboardMarkup().add(payBtn, completeBtn)
+            bot.send_message(message.chat.id,
+                             str(SOURCE.getText('moneyRequestTemplate', language).format(username=i[1], money=i[2])),
+                             reply_markup=markup)
 
 
 def mailing(message):
@@ -169,10 +182,12 @@ def mainMenuOnCLick(message):
     if role == SOURCE.employer:
         if message.text == SOURCE.getText("profileBtn", language):
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
             changeLanguageBtn = types.KeyboardButton(SOURCE.getText('changeLanguageBtn', language))
             topUpBalanceBtn = types.KeyboardButton(SOURCE.getText('topUpBalanceBtn', language))
             createReferralBtn = types.KeyboardButton(SOURCE.getText('createReferralBtn', language))
             goToMenu = types.KeyboardButton(SOURCE.getText('goToMenu', language))
+
             markup.add(topUpBalanceBtn)
             markup.add(changeLanguageBtn)
             markup.add(createReferralBtn)
@@ -212,10 +227,12 @@ def mainMenuOnCLick(message):
     if role == SOURCE.executor:
         if message.text == SOURCE.getText("profileBtn", language):
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
             changeLanguageBtn = types.KeyboardButton(SOURCE.getText('changeLanguageBtn', language))
             withdrawBalanceBtn = types.KeyboardButton(SOURCE.getText('withdrawBalanceBtn', language))
             createReferralBtn = types.KeyboardButton(SOURCE.getText('createReferralBtn', language))
             goToMenu = types.KeyboardButton(SOURCE.getText('goToMenu', language))
+
             markup.add(withdrawBalanceBtn)
             markup.add(changeLanguageBtn)
             markup.add(createReferralBtn)
@@ -246,9 +263,41 @@ def mainMenuOnCLick(message):
                              reply_markup=markup)
 
 
+def withdrawMoney(message):
+    if message.text == SOURCE.chancel_withdraw_balance:
+        mainMenuView(message)
+        return
+    if message.text == SOURCE.getText('allMoneyBtn', db.getLanguage(message.chat.id)):
+        value = db.getBalance(message.chat.id)
+    else:
+        value = message.text
+    if db.isHaveRequest(message.chat.id):
+        db.setHowMuchMoney(message.chat.id, value)
+        mainMenuView(message)
+        return
+
+    bot.send_message(message.chat.id, SOURCE.getText('getLinks', db.getLanguage(message.chat.id)))
+    bot.register_next_step_handler(message, db.newMoneyRequests, value)
+
+
 def profileOnClick(message):
     role = db.getRole(message.chat.id)
     language = db.getLanguage(message.chat.id)
+
+    if message.text == SOURCE.getText('withdrawBalanceBtn', language) and role == SOURCE.executor:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
+        allMoneyBtn = types.KeyboardButton(SOURCE.getText('allMoneyBtn', language))
+        chancelWithdrawBtn = types.KeyboardButton(SOURCE.getText('chancelWithdrawBtn', language))
+
+        markup.add(allMoneyBtn)
+        markup.add(chancelWithdrawBtn)
+
+        bot.send_message(message.chat.id,
+                         str(SOURCE.getText('withdrawBalanceAmountText', language).format(
+                             balance=db.getBalance(message.chat.id))),
+                         reply_markup=markup)
+        bot.register_next_step_handler(message, withdrawMoney)
 
     if message.text == SOURCE.getText('topUpBalanceBtn', language) and role == SOURCE.employer:
         bot.send_message(message.chat.id, SOURCE.getText('getAmountText', language))
@@ -277,11 +326,17 @@ def setAmountPayment(message):
     except:
         bot.send_message(message.chat.id, SOURCE.getText('noIntPrice', db.getLanguage(message.chat.id)))
         return
+    if price < SOURCE.min_money:
+        bot.send_message(message.chat.id,
+                         str(SOURCE.getText('minMoneyText',
+                                            db.getLanguage(message.chat.id)).format(min_money=SOURCE.min_money)))
+        return
     bot.send_message(message.chat.id, ton.get_invoice(message, price))
 
 
 def getPrice(message):
     text = message.text
+
     bot.send_message(message.chat.id, SOURCE.getText('getPriceText', db.getLanguage(message.chat.id)))
     bot.register_next_step_handler(message, db.newTask, text)
 
@@ -290,6 +345,14 @@ def getPrice(message):
 def callback_message(callback):
     language = db.getLanguage(callback.message.chat.id)
 
+    if SOURCE.withdraw_complete in callback.data:
+
+        userId = callback.data[callback.data.find('|') + 1:]
+        bot.delete_message(callback.message.chat.id, callback.message.message_id)
+        db.setBalance(userId, str(-1*db.getMoneyFromRequest(userId)))
+        db.deleteMoneyRequest(userId)
+        bot.send_message(userId, SOURCE.getText('moneyWithdrawComplete', db.getLanguage(userId)))
+        bot.send_message(callback.message.chat.id, SOURCE.getText('moneyWithdrawCompleteAdminText', language))
     if SOURCE.ruChange in callback.data:
         db.setLanguage(callback.message.chat.id, SOURCE.ruChange)
         bot.send_message(callback.message.chat.id, SOURCE.getText('changeLanguageComplete', language))

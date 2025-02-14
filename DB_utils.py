@@ -16,6 +16,19 @@ def isNew(id):
     return False
 
 
+def isHaveRequest(id):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    req = cur.execute('''SELECT userId FROM money_requests WHERE userId = ?''', [id, ]).fetchone()
+
+    con.commit()
+    con.close()
+    if req is None:
+        return False
+    return True
+
+
 def CreateTable():
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
@@ -38,11 +51,60 @@ def CreateTable():
                                                      isActive TEXT,
                                                      price INTEGER) ''')
 
+    cur.execute('''CREATE TABLE IF NOT EXISTS money_requests( userId INTEGER PRIMARY KEY,
+                                                         username TEXT,
+                                                         money INTEGER,
+                                                         walletLink TEXT) ''')
+
     con.commit()
     con.close()
 
 
-def newadmin(m):
+def newMoneyRequests(m, value):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+    id = m.chat.id
+    link = m.text
+    try:
+        print(value)
+        money = float(value.replace(',', '.'))
+    except:
+        view.anotherMessage(id, SOURCE.getText('noIntPrice', getLanguage(id)))
+        con.commit()
+        con.close()
+        view.mainMenuView(m)
+        return
+    if money > getBalance(id):
+        view.anotherMessage(id, SOURCE.getText('notEnoughMoneyWithdraw', getLanguage(id)))
+        con.commit()
+        con.close()
+        view.mainMenuView(m)
+        return
+    if money < SOURCE.min_money:
+        view.anotherMessage(id,
+                            str(SOURCE.getText('minMoneyText',
+                                               getLanguage(id)).format(min_money=SOURCE.min_money)))
+        con.commit()
+        con.close()
+        view.mainMenuView(m)
+        return
+    if SOURCE.correct_wallet_link not in link:
+        con.commit()
+        con.close()
+        view.anotherMessage(id, SOURCE.getText('notCorrectLink', getLanguage(id)))
+        view.mainMenuView(m)
+        return
+    username = getUsername(id)
+    req = cur.execute('''INSERT INTO money_requests(money, userId, walletLink, username) VALUES(?, ?, ?, ?)''',
+                      [money, id, link, username])
+
+    con.commit()
+    con.close()
+    view.anotherMessage(id, SOURCE.getText('withdrawRequestComplete', getLanguage(id)))
+    view.mainMenuView(m)
+
+
+def newAdmin(m):
     id = m.chat.id
     language = m.from_user.language_code
     username = m.from_user.username
@@ -69,6 +131,13 @@ def newTask(m, text):
 
     except:
         view.anotherMessage(m.chat.id, SOURCE.getText('noIntPrice', getLanguage(m.chat.id)))
+        con.commit()
+        con.close()
+        return
+    if getBalance(m.chat.id) < getAllTasksPrice(m.chat.id) + price:
+        view.anotherMessage(m.chat.id, SOURCE.getText('notEnoughMoney', getLanguage(m.chat.id)))
+        con.commit()
+        con.close()
         return
 
     employerId = m.chat.id
@@ -99,6 +168,7 @@ def NewUser(m):
         role = SOURCE.executor
     else:
         view.anotherMessage(m.chat.id, SOURCE.getText('uncorrectedRole', getLanguage(m.chat.id)))
+
         return
 
     con = sqlite3.connect(SOURCE.data_base_name)
@@ -112,11 +182,26 @@ def NewUser(m):
     view.mainMenuView(m)
 
 
+def getAllTasksPrice(id):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    req = cur.execute('''SELECT price FROM tasks WHERE employerId = ?''', [id, ]).fetchall()
+
+    con.commit()
+    con.close()
+
+    prices = 0
+    for i in req:
+        prices += i[0]
+    return prices
+
+
 def getStatistic():
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
 
-    employers = len(cur.execute('''SELECT id FROM users WHERE status = ?''', [SOURCE.employer,]).fetchall())
+    employers = len(cur.execute('''SELECT id FROM users WHERE status = ?''', [SOURCE.employer, ]).fetchall())
     executors = len(cur.execute('''SELECT id FROM users WHERE status = ?''', [SOURCE.executor, ]).fetchall())
     tasksActiv = len(cur.execute('''SELECT taskId FROM tasks WHERE isActive = ?''', [SOURCE.db_True, ]).fetchall())
 
@@ -162,6 +247,18 @@ def getTasks(id=None):
     return req
 
 
+def getUsername(id):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    req = cur.execute('''SELECT username FROM users WHERE id = ?''', [id, ]).fetchone()[0]
+
+    con.commit()
+    con.close()
+
+    return req
+
+
 def getTask(taskId):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
@@ -172,6 +269,44 @@ def getTask(taskId):
     con.close()
 
     return req
+
+
+def getMoneyFromRequest(id):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    req = cur.execute('''SELECT money FROM money_requests WHERE userId = ? ''',[id,]).fetchone()[0]
+
+    con.commit()
+    con.close()
+
+    return req
+
+
+def getMoneyRequests():
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    req = cur.execute('''SELECT * FROM money_requests ''').fetchall()
+
+    con.commit()
+    con.close()
+
+    return req
+
+
+def getPercents(id):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    ref = cur.execute('''SELECT referral FROM users WHERE id = ?''', [id, ]).fetchone()[0]
+
+    con.commit()
+    con.close()
+
+    if ref > 0:
+        return 0.95
+    return 0.85
 
 
 def getRole(id):
@@ -203,6 +338,18 @@ def getBalance(id):
     cur = con.cursor()
 
     req = cur.execute('''SELECT balance FROM users WHERE id = ?''', [id, ]).fetchone()[0]
+
+    con.commit()
+    con.close()
+
+    return req
+
+
+def getHowMuchMoney(id):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    req = cur.execute('''SELECT money FROM money_requests WHERE userId = ?''', [id, ]).fetchone()[0]
 
     con.commit()
     con.close()
@@ -296,6 +443,8 @@ def setBalance(id, value):
         price = float(value.replace(',', '.'))
     except:
         view.anotherMessage(value, SOURCE.getText('noIntPrice', getLanguage(id)))
+        con.commit()
+        con.close()
         return
 
     cur.execute('''UPDATE users SET balance = balance  + ? WHERE id = ?''', [price, id, ])
@@ -312,6 +461,36 @@ def setCompleteTasks(id):
 
     con.commit()
     con.close()
+
+
+def setHowMuchMoney(id, value):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    try:
+        money = float(value.replace(',', '.'))
+    except:
+        view.anotherMessage(id, SOURCE.getText('noIntPrice', getLanguage(id)))
+        con.commit()
+        con.close()
+        return
+    if money > getBalance(id):
+        view.anotherMessage(id, SOURCE.getText('notEnoughMoneyWithdraw', getLanguage(id)))
+        con.commit()
+        con.close()
+        return
+    if money < SOURCE.min_money:
+        view.anotherMessage(id,
+                            str(SOURCE.getText('minMoneyText',
+                                               getLanguage(id)).format(min_money=SOURCE.min_money)))
+        con.commit()
+        con.close()
+        return
+    req = cur.execute('''UPDATE money_requests SET money = ? WHERE userId = ?''', [money, id, ])
+
+    con.commit()
+    con.close()
+    view.anotherMessage(id, SOURCE.getText('withdrawRequestComplete', getLanguage(id)))
 
 
 def setCreateTasks(id):
@@ -349,6 +528,18 @@ def deleteTask(taskId):
     cur = con.cursor()
 
     cur.execute('''DELETE FROM tasks WHERE taskId = ?''', [taskId, ])
+
+    con.commit()
+    con.close()
+
+    return
+
+
+def deleteMoneyRequest(id):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    cur.execute('''DELETE FROM money_requests WHERE userId = ?''', [id, ])
 
     con.commit()
     con.close()

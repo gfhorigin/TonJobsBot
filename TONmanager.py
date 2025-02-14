@@ -8,10 +8,8 @@ import Viewer as view
 load_dotenv()
 API_TOKEN = os.getenv('TON_TOKEN')
 
-
-
-
 invoices = {}
+
 
 # создание ссылки для оплаты
 def get_pay_link(amount):
@@ -37,6 +35,8 @@ def check_payment_status(invoice_id):
     else:
 
         return None
+
+
 # создание формы для оплаты
 
 def get_invoice(message, price):
@@ -61,14 +61,14 @@ def check_payment(message):
     payment_status = check_payment_status(invoice_id)
     language = db.getLanguage(chat_id)
 
-    if not  payment_status and payment_status.get('ok'):
+    if not payment_status and payment_status.get('ok'):
         return SOURCE.getText('paymentRequestError', language)
 
     if not 'items' in payment_status['result']:
         return SOURCE.getText('statusPaymentError', language)
 
     invoice = next((inv for inv in payment_status['result']['items'] if str(inv['invoice_id']) == invoice_id),
-                           None)
+                   None)
     if invoice:
         return SOURCE.getText('walletBalanceNotFoundText', language)
 
@@ -77,16 +77,8 @@ def check_payment(message):
     if status != 'paid':
         return SOURCE.getText('paymentNotFoundText', language)
 
-    db.setBalance(chat_id, price)
+    db.setBalance(chat_id, price*db.getPercents(chat_id))
     return SOURCE.getText("paymentCompletedText", language)
     #  bot.send_message(chat_id, "Оплата прошла успешно!✅")
-
-
-
-
-
-
-
-
 
 
