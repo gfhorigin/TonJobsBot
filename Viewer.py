@@ -429,11 +429,13 @@ def callback_message(callback):
         db.setLanguage(callback.message.chat.id, SOURCE.ruChange)
         bot.send_message(callback.message.chat.id, SOURCE.getText('changeLanguageComplete', language))
         bot.delete_message(callback.message.chat.id, callback.message.message_id)
+        mainMenuView(callback.message)
 
     if SOURCE.enChange in callback.data:
         db.setLanguage(callback.message.chat.id, SOURCE.enChange)
         bot.send_message(callback.message.chat.id, SOURCE.getText('changeLanguageComplete', language))
         bot.delete_message(callback.message.chat.id, callback.message.message_id)
+        mainMenuView(callback.message)
 
     if SOURCE.deleteCallback in callback.data:
         taskId = callback.data[callback.data.find('|') + 1:]
