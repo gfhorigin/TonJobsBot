@@ -130,12 +130,12 @@ def newTask(m, text):
         price = float(m.text.replace(',', '.'))
 
     except:
-        view.anotherMessage(m.chat.id, SOURCE.getText('noIntPrice', SOURCE.default_language))
+        view.anotherMessage(m.chat.id, SOURCE.getText('noIntPrice', getLanguage(m.chat.id)))
         con.commit()
         con.close()
         return
     if getBalance(m.chat.id) < getAllTasksPrice(m.chat.id) + price:
-        view.anotherMessage(m.chat.id, SOURCE.getText('notEnoughMoney', SOURCE.default_language))
+        view.anotherMessage(m.chat.id, SOURCE.getText('notEnoughMoney', getLanguage(m.chat.id)))
         con.commit()
         con.close()
         return
