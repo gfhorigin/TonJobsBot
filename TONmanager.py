@@ -14,7 +14,7 @@ invoices = {}
 # создание ссылки для оплаты
 def get_pay_link(amount):
     headers = {"Crypto-Pay-API-Token": API_TOKEN}
-    data = {"asset": "USDT", "amount": amount}
+    data = {"asset": "TON", "amount": amount}
     response = requests.post('https://pay.crypt.bot/api/createInvoice', headers=headers, json=data)
     if response.ok:
         response_data = response.json()

@@ -21,7 +21,7 @@ ruChange = "ru"
 enChange = "en"
 db_True = "TRUE"
 db_False = "FALSE"
-referral_url = "https://t.me/steal_wilberies_bot?start={user_id}"
+referral_url = "https://t.me/Ton_jobs_bot?start={user_id}"
 chancel_mailing = "chancelMailing"
 chancel_withdraw_balance = "chancelWithdraw"
 correct_wallet_link = 'https://t.me/CryptoBot'

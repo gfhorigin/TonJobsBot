@@ -74,7 +74,15 @@ def start(message, res=False):
     if str(message.chat.id) in os.getenv('ADMINS'):
         adminPanelView(message)
         return
-    mainMenuView(message)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
+    executorBtn = types.KeyboardButton(SOURCE.getText('employer', SOURCE.default_language))
+    employerBtn = types.KeyboardButton(SOURCE.getText('executor', SOURCE.default_language))
+    markup.add(employerBtn, executorBtn)
+
+    bot.send_message(message.chat.id, SOURCE.getText('changeRole', db.getLanguage(message.chat.id)),reply_markup=markup)
+    bot.register_next_step_handler(message, db.setRole)
+
     return
 
 
@@ -201,11 +209,12 @@ def mainMenuView(message):
         # Создаем кнопки для работодателя
         viewTasksBtn = types.KeyboardButton(SOURCE.getText("viewTasksBtn", language))
         newTaskBtn = types.KeyboardButton(SOURCE.getText("newTaskBtn", language))
+        howCreateTaskBtn = types.KeyboardButton(SOURCE.getText('howCreateTaskBtn', language))
         profileBtn = types.KeyboardButton(SOURCE.getText("profileBtn", language))
 
         # Добавляем кнопки в клавиатуру
         markup.add(viewTasksBtn, profileBtn)  # Можно добавлять по несколько кнопок в ряд
-        markup.add(newTaskBtn)
+        markup.add(newTaskBtn, howCreateTaskBtn)
 
     elif role == SOURCE.executor:
         # Создаем кнопки для исполнителя
@@ -243,7 +252,8 @@ def mainMenuOnCLick(message):
                                          createTask=db.getCreateTasks(message.chat.id)
                                          )),
                              reply_markup=markup)
-
+        if message.text == SOURCE.getText('howCreateTaskBtn', language):
+            bot.send_message(message.chat.id,SOURCE.getText('howCreateTaskText', language))
         if message.text == SOURCE.getText("viewTasksBtn", language):
             tasks = db.getTasks(message.chat.id)
 

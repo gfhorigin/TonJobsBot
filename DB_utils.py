@@ -463,6 +463,29 @@ def setCompleteTasks(id):
     con.close()
 
 
+def setRole(m):
+    id = m.chat.id
+
+
+    if m.text == SOURCE.getText('employer', getLanguage(id)):
+        role = SOURCE.employer
+    elif m.text == SOURCE.getText('executor', getLanguage(id)):
+        role = SOURCE.executor
+    else:
+        view.anotherMessage(m.chat.id, SOURCE.getText('uncorrectedRole', getLanguage(id)))
+        return
+
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    cur.execute('''UPDATE users SET status = ? WHERE id = ? ''',
+                [role, id, ])
+
+    con.commit()
+    con.close()
+    view.mainMenuView(m)
+
+
 def setHowMuchMoney(id, value):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
