@@ -15,7 +15,14 @@ invoices = {}
 
 @bot.message_handler(commands=["start"])
 def start(message, res=False):
-    db.CreateTable()  # TODO: вырезать после завершения тестов
+    #db.CreateTable()  # TODO: вырезать после завершения тестов
+    for i in SOURCE.channels:
+        result = bot.get_chat_member(i, message.chat.id)
+
+        if result.status != 'member':
+            bot.send_message(message.chat.id, SOURCE.getText('noMember', message.from_user.language_code))
+            bot.send_message(message.chat.id, ', '.join(SOURCE.channels))
+            return
 
     if db.isNew(message.chat.id):
         if str(message.chat.id) in os.getenv('ADMINS'):

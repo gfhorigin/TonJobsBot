@@ -7,6 +7,7 @@ def getText(value: str, lg: str):
     return config[lg][value]  # читаем конфиг
 
 
+channels = ['@coinferrari','@bid_coinn']
 executor = "executor"
 employer = "employer"
 languages = ['ru', 'en']
