@@ -39,7 +39,7 @@ def CreateTable():
                                                     completeTasks DEFAULT 0,
                                                     createTasks DEFAULT 0,
                                                     rating INTEGER DEFAULT 0,
-                                                    balance INTEGER DEFAULT 0,
+                                                    balance REAL DEFAULT 0,
                                                     language TEXT,
                                                     referral INTEGER DEFAULT 0
                                                     ) ''')
@@ -49,11 +49,11 @@ def CreateTable():
                                                      executorId INTEGER,
                                                      employerId INTEGER,
                                                      isActive TEXT,
-                                                     price INTEGER) ''')
+                                                     price REAL) ''')
 
     cur.execute('''CREATE TABLE IF NOT EXISTS money_requests( userId INTEGER PRIMARY KEY,
                                                          username TEXT,
-                                                         money INTEGER,
+                                                         money REAL,
                                                          walletLink TEXT) ''')
 
     con.commit()
@@ -66,8 +66,8 @@ def newMoneyRequests(m, value):
     id = m.chat.id
     link = m.text
     try:
-        print(value)
-        money = float(value.replace(',', '.'))
+
+        money = float(str(value).replace(',', '.'))
     except:
         view.anotherMessage(id, SOURCE.getText('noIntPrice', getLanguage(id)))
         con.commit()
@@ -239,6 +239,7 @@ def getTasks(id=None, role=None):
     cur = con.cursor()
     if role == SOURCE.executor:
         req = cur.execute('''SELECT taskText, taskId FROM tasks WHERE isActive = ? AND employerId != ?''', [SOURCE.db_True, id]).fetchall()
+        
     elif role == SOURCE.admin:
         req = cur.execute('''SELECT taskText, taskId FROM tasks WHERE isActive = ? ''',
                           [SOURCE.db_True]).fetchall()
@@ -443,14 +444,16 @@ def setBalance(id, value):
     cur = con.cursor()
 
     try:
-        price = float(value.replace(',', '.'))
+        price = float(str(value).replace(',', '.'))
     except:
-        view.anotherMessage(value, SOURCE.getText('noIntPrice', getLanguage(id)))
+        view.anotherMessage(id, SOURCE.getText('noIntPrice', getLanguage(id)))
         con.commit()
         con.close()
         return
 
-    cur.execute('''UPDATE users SET balance = balance  + ? WHERE id = ?''', [price, id, ])
+    balance = cur.execute('''SELECT balance FROM users WHERE id = ?''', [id,]).fetchone()[0] +price
+
+    cur.execute('''UPDATE users SET balance = ? WHERE id = ?''', [balance, id, ])
 
     con.commit()
     con.close()
@@ -494,7 +497,7 @@ def setHowMuchMoney(id, value):
     cur = con.cursor()
 
     try:
-        money = float(value.replace(',', '.'))
+        money = float(str(value).replace(',', '.'))
     except:
         view.anotherMessage(id, SOURCE.getText('noIntPrice', getLanguage(id)))
         con.commit()

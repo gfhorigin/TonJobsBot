@@ -1,3 +1,5 @@
+import math
+
 import requests
 from dotenv import load_dotenv
 import os
@@ -67,9 +69,10 @@ def check_payment(message):
     if not 'items' in payment_status['result']:
         return SOURCE.getText('statusPaymentError', language)
 
-    invoice = next((inv for inv in payment_status['result']['items'] if str(inv['invoice_id']) == invoice_id),
+    invoice = next((inv for inv in payment_status['result']['items'] if str(inv['invoice_id']) == str(invoice_id)),
                    None)
-    if invoice:
+
+    if not invoice:
         return SOURCE.getText('walletBalanceNotFoundText', language)
 
     status = invoice['status']
@@ -77,7 +80,10 @@ def check_payment(message):
     if status != 'paid':
         return SOURCE.getText('paymentNotFoundText', language)
 
-    db.setBalance(chat_id, price*db.getPercents(chat_id))
+
+    db.setBalance(chat_id, (price*db.getPercents(chat_id)))
+    view.deleteMessage(chat_id,message.message_id)
+    invoices.pop(chat_id)
     return SOURCE.getText("paymentCompletedText", language)
     #  bot.send_message(chat_id, "Оплата прошла успешно!✅")
 
