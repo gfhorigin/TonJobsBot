@@ -52,6 +52,7 @@ def start(message, res=False):
 
                 # Проверяем на несоответствие TG ID пользователя TG ID реферера
                 if message.chat.id != referrer_candidate:
+                    bot.send_message(referrer_candidate, SOURCE.getText('referralRegister', SOURCE.default_language))
                     db.setReferral(referrer_candidate)
 
             except ValueError:
@@ -138,13 +139,17 @@ def adminPanel(message):
 
     if message.text == SOURCE.getText('withdrawRequests', language):
         req = db.getMoneyRequests()
+        if not req:
+            bot.send_message(message.chat.id, SOURCE.getText('notWithdrawRequests', language))
         for i in req:
-            payBtn = types.InlineKeyboardButton(SOURCE.getText('payBtn', language), url=str(i[3]))
+           # payBtn = types.InlineKeyboardButton(SOURCE.getText('payBtn', language))
             completeBtn = types.InlineKeyboardButton(SOURCE.getText('completeWithdrawBtn', language),
                                                      callback_data=SOURCE.withdraw_complete + '|' + str(i[0]))
-            markup = types.InlineKeyboardMarkup().add(payBtn, completeBtn)
+            markup = types.InlineKeyboardMarkup().add( completeBtn)
             bot.send_message(message.chat.id,
-                             str(SOURCE.getText('moneyRequestTemplate', language).format(username=i[1], money=i[2])),
+                             str(SOURCE.getText('moneyRequestTemplate', language).format(username=i[1],
+                                                                                         money=i[2],
+                                                                                         link=str(i[3]))),
                              reply_markup=markup)
 
 
@@ -301,7 +306,7 @@ def mainMenuOnCLick(message):
                              reply_markup=markup)
 
         if message.text == SOURCE.getText("viewTasksBtn", language):
-            tasks = db.getTasks(role=db.getRole(message.chat.id))
+            tasks = db.getTasks(id=message.chat.id, role=db.getRole(message.chat.id))
 
             if not tasks:
                 bot.send_message(message.chat.id, SOURCE.getText('notTaskToday', language))
@@ -319,7 +324,7 @@ def mainMenuOnCLick(message):
 
 
 def withdrawMoney(message):
-    if message.text == SOURCE.chancel_withdraw_balance:
+    if message.text == SOURCE.getText('chancelWithdrawBtn', db.getLanguage(message.chat.id)):
         mainMenuView(message)
         return
     if message.text == SOURCE.getText('allMoneyBtn', db.getLanguage(message.chat.id)):
@@ -327,8 +332,9 @@ def withdrawMoney(message):
     else:
         value = message.text
     if db.isHaveRequest(message.chat.id):
-        db.setHowMuchMoney(message.chat.id, value)
-        mainMenuView(message)
+        bot.send_message(message.chat.id, SOURCE.getText('getLinks', db.getLanguage(message.chat.id)))
+        bot.register_next_step_handler(message, db.setHowMuchMoney, value)
+
         return
 
     bot.send_message(message.chat.id, SOURCE.getText('getLinks', db.getLanguage(message.chat.id)))
@@ -476,20 +482,23 @@ def callback_message(callback):
         bot.register_next_step_handler(callback.message, get_photo, db.getEmployerId(taskId), taskId)
 
     if SOURCE.closeReport in callback.data:
-        executorID = callback.data[callback.data.find('|') + 1:]
+        executorID = callback.data[callback.data.find('|') + 1:callback.data.rfind('|')]
         taskId = callback.data[callback.data.rfind('|') + 1:]
         db.setRating(executorID, -1)
         db.setTaskActivity(taskId, SOURCE.db_True)
         bot.delete_message(callback.message.chat.id, callback.message.message_id)
+        bot.send_message(executorID, SOURCE.getText('yourReportCancel', db.getLanguage(executorID)))
 
     if SOURCE.acceptReport in callback.data:
         executorID = callback.data[callback.data.find('|') + 1:callback.data.rfind('|')]
         taskId = callback.data[callback.data.rfind('|') + 1:]
         db.setRating(executorID, 1)
         db.setBalance(executorID, db.getPrice(taskId))
+        db.setBalance(callback.message.chat.id, -db.getPrice(taskId))
         db.setCompleteTasks(executorID)
         db.deleteTask(taskId)
         bot.delete_message(callback.message.chat.id, callback.message.message_id)
+        bot.send_message(executorID, SOURCE.getText('yourReportAccept', db.getLanguage(executorID)))
 
 
 @bot.message_handler(content_types=['photo'])
@@ -497,7 +506,15 @@ def get_photo(message, employerID=None, taskId=None):
     if employerID is None or taskId is None:
         return
 
-    bot.copy_message(chat_id=employerID, from_chat_id=message.chat.id, message_id=message.message_id)
+    nextMessage = 0
+    while True:
+        try:
+            bot.copy_message(chat_id=employerID, from_chat_id=message.chat.id, message_id=message.message_id+nextMessage)
+            nextMessage += 1
+        except:
+            break
+
+    # bot.send_message(employerID, message)
     db.setTaskActivity(taskId, SOURCE.db_False)
     db.setTaskExecutorId(taskId, message.chat.id)
     markup = types.InlineKeyboardMarkup()
@@ -512,6 +529,7 @@ def get_photo(message, employerID=None, taskId=None):
     bot.send_message(employerID,
                      SOURCE.getText('reportForEmployer', db.getLanguage(employerID)) + ' ' + db.getTask(taskId),
                      reply_markup=markup)
+    bot.send_message(message.chat.id, SOURCE.getText('yourReportRejected', db.getLanguage(message.chat.id)))
 
 
 if __name__ == "__main__":

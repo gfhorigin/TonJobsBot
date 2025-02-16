@@ -88,12 +88,12 @@ def newMoneyRequests(m, value):
         con.close()
         view.mainMenuView(m)
         return
-    if SOURCE.correct_wallet_link not in link:
-        con.commit()
-        con.close()
-        view.anotherMessage(id, SOURCE.getText('notCorrectLink', getLanguage(id)))
-        view.mainMenuView(m)
-        return
+    # if SOURCE.correct_wallet_link not in link:
+    #     con.commit()
+    #     con.close()
+    #     view.anotherMessage(id, SOURCE.getText('notCorrectLink', getLanguage(id)))
+    #     view.mainMenuView(m)
+    #     return
     username = getUsername(id)
     req = cur.execute('''INSERT INTO money_requests(money, userId, walletLink, username) VALUES(?, ?, ?, ?)''',
                       [money, id, link, username])
@@ -131,6 +131,13 @@ def newTask(m, text):
 
     except:
         view.anotherMessage(m.chat.id, SOURCE.getText('noIntPrice', getLanguage(m.chat.id)))
+        con.commit()
+        con.close()
+        return
+    if price< SOURCE.min_money:
+        view.anotherMessage(m.chat.id,
+                         str(SOURCE.getText('minMoneyText',
+                                            getLanguage(m.chat.id)).format(min_money=SOURCE.min_money)))
         con.commit()
         con.close()
         return
@@ -238,8 +245,9 @@ def getTasks(id=None, role=None):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
     if role == SOURCE.executor:
-        req = cur.execute('''SELECT taskText, taskId FROM tasks WHERE isActive = ? AND employerId != ?''', [SOURCE.db_True, id]).fetchall()
-        
+        req = cur.execute('''SELECT taskText, taskId FROM tasks WHERE isActive = ? AND employerId != ?''', [SOURCE.db_True,
+                                                                                                            id]).fetchall()
+
     elif role == SOURCE.admin:
         req = cur.execute('''SELECT taskText, taskId FROM tasks WHERE isActive = ? ''',
                           [SOURCE.db_True]).fetchall()
@@ -492,21 +500,25 @@ def setRole(m):
     view.mainMenuView(m)
 
 
-def setHowMuchMoney(id, value):
+def setHowMuchMoney(m, value):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
-
+    id = m.chat.id
+    link = m.text
     try:
+
         money = float(str(value).replace(',', '.'))
     except:
         view.anotherMessage(id, SOURCE.getText('noIntPrice', getLanguage(id)))
         con.commit()
         con.close()
+        view.mainMenuView(m)
         return
     if money > getBalance(id):
         view.anotherMessage(id, SOURCE.getText('notEnoughMoneyWithdraw', getLanguage(id)))
         con.commit()
         con.close()
+        view.mainMenuView(m)
         return
     if money < SOURCE.min_money:
         view.anotherMessage(id,
@@ -514,12 +526,14 @@ def setHowMuchMoney(id, value):
                                                getLanguage(id)).format(min_money=SOURCE.min_money)))
         con.commit()
         con.close()
+        view.mainMenuView(m)
         return
     req = cur.execute('''UPDATE money_requests SET money = ? WHERE userId = ?''', [money, id, ])
 
     con.commit()
     con.close()
     view.anotherMessage(id, SOURCE.getText('withdrawRequestComplete', getLanguage(id)))
+    view.mainMenuView(m)
 
 
 def setCreateTasks(id):
