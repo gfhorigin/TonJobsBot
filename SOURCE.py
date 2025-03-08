@@ -11,6 +11,7 @@ channels = ['@coinferrari', '@bid_coinn']
 channels_url = ['https://t.me/coinferrari', 'https://t.me/Ton_jobsofficiall']
 executor = "executor"
 employer = "employer"
+ban = 'ban'
 languages = ['ru', 'en']
 deleteCallback = "delete"
 respondCallback = "respond"

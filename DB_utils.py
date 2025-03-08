@@ -104,6 +104,17 @@ def newMoneyRequests(m, value):
     view.mainMenuView(m)
 
 
+def isBan(id):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+    status = cur.execute('''SELECT status FROM users WHERE id = ?''', [id, ]).fetchone()[0]
+    con.commit()
+    con.close()
+    if status == SOURCE.ban:
+        return True
+    return False
+
+
 def newAdmin(m):
     id = m.chat.id
     language = m.from_user.language_code
@@ -134,10 +145,10 @@ def newTask(m, text):
         con.commit()
         con.close()
         return
-    if price< SOURCE.min_money:
+    if price < SOURCE.min_money:
         view.anotherMessage(m.chat.id,
-                         str(SOURCE.getText('minMoneyText',
-                                            getLanguage(m.chat.id)).format(min_money=SOURCE.min_money)))
+                            str(SOURCE.getText('minMoneyText',
+                                               getLanguage(m.chat.id)).format(min_money=SOURCE.min_money)))
         con.commit()
         con.close()
         return
@@ -169,9 +180,9 @@ def NewUser(m):
     username = m.from_user.username
     if language not in SOURCE.languages or language is None:
         language = SOURCE.default_language
-    if m.text == SOURCE.getText('employer',  SOURCE.default_language):
+    if m.text == SOURCE.getText('employer', SOURCE.default_language):
         role = SOURCE.employer
-    elif m.text == SOURCE.getText('executor',  SOURCE.default_language):
+    elif m.text == SOURCE.getText('executor', SOURCE.default_language):
         role = SOURCE.executor
     else:
         view.anotherMessage(m.chat.id, SOURCE.getText('uncorrectedRole', SOURCE.default_language))
@@ -229,6 +240,18 @@ def getUsers():
     return req
 
 
+def getUsersInfo():
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    req = cur.execute('''SELECT username, balance, referral, id FROM users''').fetchall()
+
+    con.commit()
+    con.close()
+
+    return req
+
+
 def getLanguage(id):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
@@ -245,8 +268,9 @@ def getTasks(id=None, role=None):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
     if role == SOURCE.executor:
-        req = cur.execute('''SELECT taskText, taskId FROM tasks WHERE isActive = ? AND employerId != ?''', [SOURCE.db_True,
-                                                                                                            id]).fetchall()
+        req = cur.execute('''SELECT taskText, taskId FROM tasks WHERE isActive = ? AND employerId != ?''',
+                          [SOURCE.db_True,
+                           id]).fetchall()
 
     elif role == SOURCE.admin:
         req = cur.execute('''SELECT taskText, taskId FROM tasks WHERE isActive = ? ''',
@@ -287,7 +311,7 @@ def getMoneyFromRequest(id):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
 
-    req = cur.execute('''SELECT money FROM money_requests WHERE userId = ? ''',[id,]).fetchone()[0]
+    req = cur.execute('''SELECT money FROM money_requests WHERE userId = ? ''', [id, ]).fetchone()[0]
 
     con.commit()
     con.close()
@@ -447,6 +471,16 @@ def setTaskExecutorId(taskId, id):
     con.close()
 
 
+def banStatus(id):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    cur.execute('''UPDATE users SET status = ? WHERE id = ?''', [SOURCE.ban, id])
+
+    con.commit()
+    con.close()
+
+
 def setBalance(id, value):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
@@ -459,7 +493,7 @@ def setBalance(id, value):
         con.close()
         return
 
-    balance = cur.execute('''SELECT balance FROM users WHERE id = ?''', [id,]).fetchone()[0] +price
+    balance = cur.execute('''SELECT balance FROM users WHERE id = ?''', [id, ]).fetchone()[0] + price
 
     cur.execute('''UPDATE users SET balance = ? WHERE id = ?''', [balance, id, ])
 
@@ -479,7 +513,6 @@ def setCompleteTasks(id):
 
 def setRole(m):
     id = m.chat.id
-
 
     if m.text == SOURCE.getText('employer', getLanguage(id)):
         role = SOURCE.employer

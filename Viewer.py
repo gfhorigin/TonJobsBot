@@ -76,6 +76,10 @@ def start(message, res=False):
     if str(message.chat.id) in os.getenv('ADMINS'):
         adminPanelView(message)
         return
+    if db.isBan(message.chat.id):
+        bot.send_message(message.chat.id, SOURCE.getText('youBanned', db.getLanguage(message.chat.id)))
+        return
+
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
     executorBtn = types.KeyboardButton(SOURCE.getText('employer', db.getLanguage(message.chat.id)))
@@ -98,11 +102,13 @@ def adminPanelView(message):
     tasksBtn = types.KeyboardButton(SOURCE.getText('tasksBtn', language))
     mailingBtn = types.KeyboardButton(SOURCE.getText('mailingBtn', language))
     withdrawRequests = types.KeyboardButton(SOURCE.getText('withdrawRequests', language))
+    userListBtn = types.KeyboardButton(SOURCE.getText('userListBtn', language))
 
     markup.add(statisticBtn)
     markup.add(mailingBtn)
     markup.add(tasksBtn)
     markup.add(withdrawRequests)
+    markup.add(userListBtn)
 
     bot.send_message(message.chat.id, SOURCE.getText('welcomeAdminText', db.getLanguage(message.chat.id)),
                      reply_markup=markup)
@@ -111,6 +117,21 @@ def adminPanelView(message):
 @bot.message_handler(func=lambda message: str(message.chat.id) in os.getenv('ADMINS'))
 def adminPanel(message):
     language = db.getLanguage(message.chat.id)
+
+    if message.text == SOURCE.getText('userListBtn', language):
+        usersInfo = db.getUsersInfo()
+        for userInfo in usersInfo:
+            if userInfo[3] == message.chat.id:
+                continue
+            markup = types.InlineKeyboardMarkup()
+            banBtn = types.InlineKeyboardButton(SOURCE.getText('banBtn', language),
+                                                callback_data=str(SOURCE.ban) +'|'+ str(userInfo[3]))
+            markup.add(banBtn)
+            bot.send_message(message.chat.id,
+                             SOURCE.getText('userInfoForAdmin', language).format(username=userInfo[0],
+                                                                                     balance=userInfo[1],
+                                                                                     referral=userInfo[2]),
+                             reply_markup=markup)
 
     if message.text == SOURCE.getText('statisticBtn', language):
         statistic = db.getStatistic()
@@ -142,10 +163,10 @@ def adminPanel(message):
         if not req:
             bot.send_message(message.chat.id, SOURCE.getText('notWithdrawRequests', language))
         for i in req:
-           # payBtn = types.InlineKeyboardButton(SOURCE.getText('payBtn', language))
+            # payBtn = types.InlineKeyboardButton(SOURCE.getText('payBtn', language))
             completeBtn = types.InlineKeyboardButton(SOURCE.getText('completeWithdrawBtn', language),
                                                      callback_data=SOURCE.withdraw_complete + '|' + str(i[0]))
-            markup = types.InlineKeyboardMarkup().add( completeBtn)
+            markup = types.InlineKeyboardMarkup().add(completeBtn)
             bot.send_message(message.chat.id,
                              str(SOURCE.getText('moneyRequestTemplate', language).format(username=i[1],
                                                                                          money=i[2],
@@ -190,7 +211,9 @@ def TextHandler(message):
             bot.send_message(message.chat.id, SOURCE.getText('noMember', SOURCE.default_language),
                              reply_markup=markup)
             return
-
+    if db.isBan(message.chat.id):
+        bot.send_message(message.chat.id, SOURCE.getText('youBanned', db.getLanguage(message.chat.id)))
+        return
     if db.isNew(message.chat.id):
         bot.send_message(message.chat.id, SOURCE.getText('notRegistered', SOURCE.default_language))
         return
@@ -451,6 +474,11 @@ def callback_message(callback):
         except Exception as e:
             print(e)
 
+    if SOURCE.ban in callback.data:
+        userId = callback.data[callback.data.find('|') + 1:]
+        db.banStatus(userId)
+        bot.send_message(callback.message.chat.id, SOURCE.getText('userBanned',language))
+
     if SOURCE.withdraw_complete in callback.data:
         userId = callback.data[callback.data.find('|') + 1:]
         bot.delete_message(callback.message.chat.id, callback.message.message_id)
@@ -509,7 +537,8 @@ def get_photo(message, employerID=None, taskId=None):
     nextMessage = 0
     while True:
         try:
-            bot.copy_message(chat_id=employerID, from_chat_id=message.chat.id, message_id=message.message_id+nextMessage)
+            bot.copy_message(chat_id=employerID, from_chat_id=message.chat.id,
+                             message_id=message.message_id + nextMessage)
             nextMessage += 1
         except:
             break
