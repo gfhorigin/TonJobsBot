@@ -49,7 +49,8 @@ def CreateTable():
                                                      executorId INTEGER,
                                                      employerId INTEGER,
                                                      isActive TEXT,
-                                                     price REAL) ''')
+                                                     price REAL,
+                                                     count INTEGER ) ''')
 
     cur.execute('''CREATE TABLE IF NOT EXISTS money_requests( userId INTEGER PRIMARY KEY,
                                                          username TEXT,
@@ -80,20 +81,14 @@ def newMoneyRequests(m, value):
         con.close()
         view.mainMenuView(m)
         return
-    if money < SOURCE.min_money:
+    if money < SOURCE.min_money_withdraw:
         view.anotherMessage(id,
                             str(SOURCE.getText('minMoneyText',
-                                               getLanguage(id)).format(min_money=SOURCE.min_money)))
+                                               getLanguage(id)).format(min_money=SOURCE.min_money_withdraw)))
         con.commit()
         con.close()
         view.mainMenuView(m)
         return
-    # if SOURCE.correct_wallet_link not in link:
-    #     con.commit()
-    #     con.close()
-    #     view.anotherMessage(id, SOURCE.getText('notCorrectLink', getLanguage(id)))
-    #     view.mainMenuView(m)
-    #     return
     username = getUsername(id)
     req = cur.execute('''INSERT INTO money_requests(money, userId, walletLink, username) VALUES(?, ?, ?, ?)''',
                       [money, id, link, username])
@@ -133,7 +128,7 @@ def newAdmin(m):
     view.adminPanelView(m)
 
 
-def newTask(m, text):
+def newTask(m, text, count):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
     try:
@@ -163,18 +158,19 @@ def newTask(m, text):
         taskId = cur.execute('''SELECT taskId FROM tasks''').fetchall()[-1][0] + 1
     except:
         taskId = 1
-    cur.execute('''INSERT INTO tasks(taskId, taskText, employerId, isActive, price) VALUES(?, ?, ?, ?, ?) ''', [taskId,
+    cur.execute('''INSERT INTO tasks(taskId, taskText, employerId, isActive, price, count) VALUES(?, ?, ?, ?, ?, ?) ''', [taskId,
                                                                                                                 text,
                                                                                                                 employerId,
                                                                                                                 SOURCE.db_True,
-                                                                                                                price])
+                                                                                                                price,
+                                                                                                                count])
 
     con.commit()
     con.close()
     view.anotherMessage(m.chat.id, SOURCE.getText('newTaskCreated', getLanguage(m.chat.id)))
 
 
-def NewUser(m):
+def NewUser(m, money):
     id = m.chat.id
     language = m.from_user.language_code
     username = m.from_user.username
@@ -192,8 +188,8 @@ def NewUser(m):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
 
-    cur.execute('''INSERT INTO users(id, status, language, username) VALUES(?, ?, ?, ?) ''',
-                [id, role, language, username])
+    cur.execute('''INSERT INTO users(id, status, language, username, balance) VALUES(?, ?, ?, ?, ?) ''',
+                [id, role, language, username, money])
 
     con.commit()
     con.close()
@@ -213,6 +209,18 @@ def getAllTasksPrice(id):
     for i in req:
         prices += i[0]
     return prices
+
+
+def getTaskCount(taskId):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    req = cur.execute('''SELECT count FROM tasks WHERE  taskId = ? ''', [taskId,]).fetchone()[0]
+
+    con.commit()
+    con.close()
+
+    return req
 
 
 def getStatistic():
@@ -451,6 +459,16 @@ def setTaskActivity(taskId, value):
     con.close()
 
 
+def setTaskCount(taskId):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    cur.execute('''UPDATE tasks SET count = count-1 WHERE taskId = ?''', [taskId, ])
+
+    con.commit()
+    con.close()
+
+
 def setRating(id, value):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
@@ -476,6 +494,16 @@ def banStatus(id):
     cur = con.cursor()
 
     cur.execute('''UPDATE users SET status = ? WHERE id = ?''', [SOURCE.ban, id])
+
+    con.commit()
+    con.close()
+
+
+def unbanStatus(id):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    cur.execute('''UPDATE users SET status = ? WHERE id = ?''', [SOURCE.unban, id])
 
     con.commit()
     con.close()
@@ -553,10 +581,10 @@ def setHowMuchMoney(m, value):
         con.close()
         view.mainMenuView(m)
         return
-    if money < SOURCE.min_money:
+    if money < SOURCE.min_money_withdraw:
         view.anotherMessage(id,
                             str(SOURCE.getText('minMoneyText',
-                                               getLanguage(id)).format(min_money=SOURCE.min_money)))
+                                               getLanguage(id)).format(min_money=SOURCE.min_money_withdraw)))
         con.commit()
         con.close()
         view.mainMenuView(m)

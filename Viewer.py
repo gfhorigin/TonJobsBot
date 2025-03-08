@@ -42,7 +42,7 @@ def start(message, res=False):
         if str(message.chat.id) in os.getenv('ADMINS'):
             db.newAdmin(message)
             return
-
+        base_money = 0
         if " " in message.text:
             referrer_candidate = message.text.split()[1]
             # print(referrer_candidate)
@@ -54,6 +54,8 @@ def start(message, res=False):
                 if message.chat.id != referrer_candidate:
                     bot.send_message(referrer_candidate, SOURCE.getText('referralRegister', SOURCE.default_language))
                     db.setReferral(referrer_candidate)
+                    base_money = SOURCE.for_referral_money
+                    db.setBalance(referrer_candidate, SOURCE.for_referral_money)
 
             except ValueError:
                 pass
@@ -69,7 +71,8 @@ def start(message, res=False):
 
         bot.send_message(message.chat.id, SOURCE.getText('choose_role', SOURCE.default_language),
                          reply_markup=markup)
-        bot.register_next_step_handler(message, db.NewUser)
+
+        bot.register_next_step_handler(message, db.NewUser, base_money)
         return
 
     # bot.send_message(message.chat.id, SOURCE.getText('start_text_second', db.getLanguage(message.chat.id)))
@@ -124,13 +127,21 @@ def adminPanel(message):
             if userInfo[3] == message.chat.id:
                 continue
             markup = types.InlineKeyboardMarkup()
-            banBtn = types.InlineKeyboardButton(SOURCE.getText('banBtn', language),
-                                                callback_data=str(SOURCE.ban) +'|'+ str(userInfo[3]))
-            markup.add(banBtn)
+            if db.isBan(userInfo[3]):
+                banBtn = types.InlineKeyboardButton(SOURCE.getText('unbanBtn', language),
+                                                    callback_data=str(SOURCE.unban) + '|' + str(userInfo[3]))
+            else:
+                banBtn = types.InlineKeyboardButton(SOURCE.getText('banBtn', language),
+                                                    callback_data=str(SOURCE.ban) + '|' + str(userInfo[3]))
+
+            setBalanceBtn = types.InlineKeyboardButton(SOURCE.getText('setBalanceBtn', language),
+                                                       callback_data=SOURCE.set_balance_command + '|' + str(
+                                                           userInfo[3]))
+            markup.add(banBtn, setBalanceBtn)
             bot.send_message(message.chat.id,
-                             SOURCE.getText('userInfoForAdmin', language).format(username=userInfo[0],
-                                                                                     balance=userInfo[1],
-                                                                                     referral=userInfo[2]),
+                             SOURCE.getText('userInfoForAdmin', language).format(username=userInfo[0] if userInfo[0] else str(userInfo[3]),
+                                                                                 balance=userInfo[1],
+                                                                                 referral=userInfo[2]),
                              reply_markup=markup)
 
     if message.text == SOURCE.getText('statisticBtn', language):
@@ -305,8 +316,19 @@ def mainMenuOnCLick(message):
 
         if message.text == SOURCE.getText("newTaskBtn", db.getLanguage(message.chat.id)):
             db.setCreateTasks(message.chat.id)
-            bot.send_message(message.chat.id, SOURCE.getText('newTaskText', language))
-            bot.register_next_step_handler(message, getPrice)
+
+            def getCount(m):
+                try:
+                    count = int(m.text)
+                except:
+                    bot.send_message(m.chat.id, SOURCE.getText('incorrect', language))
+                    return
+
+                bot.send_message(m.chat.id, SOURCE.getText('newTaskText', language))
+                bot.register_next_step_handler(m, getPrice, count)
+
+            bot.send_message(message.chat.id, SOURCE.getText('getTaskCount', language))
+            bot.register_next_step_handler(message, getCount)
 
     if role == SOURCE.executor:
         if message.text == SOURCE.getText("profileBtn", language):
@@ -388,6 +410,7 @@ def profileOnClick(message):
         bot.register_next_step_handler(message, setAmountPayment)
 
     if message.text == SOURCE.getText('createReferralBtn', language):
+        bot.send_message(message.chat.id, SOURCE.getText('howUseReferral', language))
         bot.send_message(message.chat.id, SOURCE.getText('youGetReferral', language))
         bot.send_message(message.chat.id, str(SOURCE.referral_url.format(user_id=message.chat.id)))
 
@@ -423,11 +446,11 @@ def setAmountPayment(message):
     bot.send_message(message.chat.id, ton.get_invoice(message, price), reply_markup=markup)
 
 
-def getPrice(message):
+def getPrice(message, count):
     text = message.text
 
     bot.send_message(message.chat.id, SOURCE.getText('getPriceText', db.getLanguage(message.chat.id)))
-    bot.register_next_step_handler(message, db.newTask, text)
+    bot.register_next_step_handler(message, db.newTask, text, count)
 
 
 def deleteMessage(chat_id, message_id):
@@ -473,12 +496,24 @@ def callback_message(callback):
             bot.send_message(callback.message.chat.id, ton.check_payment(callback.message))
         except Exception as e:
             print(e)
+    if SOURCE.unban in callback.data:
+        userId = callback.data[callback.data.find('|') + 1:]
+        db.unbanStatus(userId)
+        bot.send_message(callback.message.chat.id, SOURCE.getText('userUnbanned', language))
 
     if SOURCE.ban in callback.data:
         userId = callback.data[callback.data.find('|') + 1:]
         db.banStatus(userId)
-        bot.send_message(callback.message.chat.id, SOURCE.getText('userBanned',language))
+        bot.send_message(callback.message.chat.id, SOURCE.getText('userBanned', language))
+    if SOURCE.set_balance_command in callback.data:
+        def setBalance(m, id):
+            value = m.text
+            bot.send_message(m.chat.id, SOURCE.getText('setBalanceComplete', language))
+            db.setBalance(id, value)
 
+        bot.send_message(callback.message.chat.id,
+                         SOURCE.getText('setBalanceText', language))
+        bot.register_next_step_handler(callback.message, setBalance, callback.data[callback.data.find('|') + 1:])
     if SOURCE.withdraw_complete in callback.data:
         userId = callback.data[callback.data.find('|') + 1:]
         bot.delete_message(callback.message.chat.id, callback.message.message_id)
@@ -521,10 +556,15 @@ def callback_message(callback):
         executorID = callback.data[callback.data.find('|') + 1:callback.data.rfind('|')]
         taskId = callback.data[callback.data.rfind('|') + 1:]
         db.setRating(executorID, 1)
+        db.setTaskCount(taskId)
+
         db.setBalance(executorID, db.getPrice(taskId))
         db.setBalance(callback.message.chat.id, -db.getPrice(taskId))
         db.setCompleteTasks(executorID)
-        db.deleteTask(taskId)
+        if db.getTaskCount(taskId) <= 0:
+            db.setTaskActivity(taskId, False)
+            db.deleteTask(taskId)
+
         bot.delete_message(callback.message.chat.id, callback.message.message_id)
         bot.send_message(executorID, SOURCE.getText('yourReportAccept', db.getLanguage(executorID)))
 
@@ -544,7 +584,7 @@ def get_photo(message, employerID=None, taskId=None):
             break
 
     # bot.send_message(employerID, message)
-    db.setTaskActivity(taskId, SOURCE.db_False)
+    # db.setTaskActivity(taskId, SOURCE.db_False)
     db.setTaskExecutorId(taskId, message.chat.id)
     markup = types.InlineKeyboardMarkup()
 
