@@ -52,7 +52,8 @@ def start(message, res=False):
 
                 # Проверяем на несоответствие TG ID пользователя TG ID реферера
                 if message.chat.id != referrer_candidate:
-                    bot.send_message(referrer_candidate, SOURCE.getText('referralRegister', SOURCE.default_language))
+                    bot.send_message(referrer_candidate,
+                                     str(SOURCE.getText('referralRegister', SOURCE.default_language).format(num=SOURCE.for_referral_money)))
                     db.setReferral(referrer_candidate)
                     base_money = SOURCE.for_referral_money
                     db.setBalance(referrer_candidate, SOURCE.for_referral_money)
@@ -167,7 +168,8 @@ def adminPanel(message):
             bot.send_message(message.chat.id,
                              str(SOURCE.getText('taskTextTemplate', language)
                                  .format(text=i[0],
-                                         price=db.getPrice(i[1]))))
+                                         price=db.getPrice(i[1]),
+                                         count=db.getTaskCount(i[1]))))
 
     if message.text == SOURCE.getText('withdrawRequests', language):
         req = db.getMoneyRequests()
@@ -191,8 +193,11 @@ def mailing(message):
         return
     for i in db.getUsers():
         if i[0] == message.chat.id:
-            continue
-        bot.send_message(i[0], message.text)
+             continue
+        try:
+            bot.send_message(i[0], str(message.text))
+        except:
+            print(i)
     bot.send_message(message.chat.id, SOURCE.getText('mailingComplete', db.getLanguage(message.chat.id)))
     adminPanelView(message)
 
@@ -222,11 +227,12 @@ def TextHandler(message):
             bot.send_message(message.chat.id, SOURCE.getText('noMember', SOURCE.default_language),
                              reply_markup=markup)
             return
-    if db.isBan(message.chat.id):
-        bot.send_message(message.chat.id, SOURCE.getText('youBanned', db.getLanguage(message.chat.id)))
-        return
+
     if db.isNew(message.chat.id):
         bot.send_message(message.chat.id, SOURCE.getText('notRegistered', SOURCE.default_language))
+        return
+    if db.isBan(message.chat.id):
+        bot.send_message(message.chat.id, SOURCE.getText('youBanned', db.getLanguage(message.chat.id)))
         return
     mainMenuOnCLick(message)
     profileOnClick(message)
@@ -311,7 +317,8 @@ def mainMenuOnCLick(message):
                 bot.send_message(message.chat.id,
                                  str(SOURCE.getText('taskTextTemplate', language)
                                      .format(text=i[0],
-                                             price=db.getPrice(i[1]))),
+                                             price=db.getPrice(i[1]),
+                                             count=db.getTaskCount(i[1]))),
                                  reply_markup=markup)
 
         if message.text == SOURCE.getText("newTaskBtn", db.getLanguage(message.chat.id)):
@@ -364,7 +371,8 @@ def mainMenuOnCLick(message):
             markup.add(respondBtn)
             bot.send_message(message.chat.id, str(SOURCE.getText('taskTextTemplate', language)
                                                   .format(text=tasks[random.randint(0, len(tasks) - 1)][0],
-                                                          price=db.getPrice(tasks[tasksNum][1]))),
+                                                          price=db.getPrice(tasks[tasksNum][1]),
+                                                          count=db.getTaskCount(tasks[tasksNum][1]))),
                              reply_markup=markup)
 
 
@@ -410,7 +418,8 @@ def profileOnClick(message):
         bot.register_next_step_handler(message, setAmountPayment)
 
     if message.text == SOURCE.getText('createReferralBtn', language):
-        bot.send_message(message.chat.id, SOURCE.getText('howUseReferral', language))
+        bot.send_message(message.chat.id,
+                         str(SOURCE.getText('howUseReferral', language).format(num=SOURCE.for_referral_money)))
         bot.send_message(message.chat.id, SOURCE.getText('youGetReferral', language))
         bot.send_message(message.chat.id, str(SOURCE.referral_url.format(user_id=message.chat.id)))
 

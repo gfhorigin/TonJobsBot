@@ -200,14 +200,14 @@ def getAllTasksPrice(id):
     con = sqlite3.connect(SOURCE.data_base_name)
     cur = con.cursor()
 
-    req = cur.execute('''SELECT price FROM tasks WHERE employerId = ?''', [id, ]).fetchall()
+    req = cur.execute('''SELECT price, count FROM tasks WHERE employerId = ?''', [id, ]).fetchall()
 
     con.commit()
     con.close()
 
     prices = 0
     for i in req:
-        prices += i[0]
+        prices += i[0]*i[1]
     return prices
 
 
@@ -308,6 +308,18 @@ def getTask(taskId):
     cur = con.cursor()
 
     req = cur.execute('''SELECT taskText FROM tasks WHERE taskId = ?''', [taskId, ]).fetchone()[0]
+
+    con.commit()
+    con.close()
+
+    return req
+
+
+def getTaskCount(task_id):
+    con = sqlite3.connect(SOURCE.data_base_name)
+    cur = con.cursor()
+
+    req = cur.execute('''SELECT count FROM tasks WHERE taskId = ?''', [task_id, ]).fetchone()[0]
 
     con.commit()
     con.close()

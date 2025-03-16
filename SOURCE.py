@@ -7,8 +7,8 @@ def getText(value: str, lg: str):
     return config[lg][value]  # читаем конфиг
 
 
-channels = ['@coinferrari', '@bid_coinn']
-channels_url = ['https://t.me/coinferrari', 'https://t.me/Ton_jobsofficiall']
+channels = []#['@coinferrari', '@bid_coinn']
+channels_url = []#['https://t.me/coinferrari', 'https://t.me/Ton_jobsofficiall']
 executor = "executor"
 employer = "employer"
 ban = 'ban'
